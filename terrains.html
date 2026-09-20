@@ -1,0 +1,449 @@
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --paper:#f5f6f2; --ink:#1d2a24; --ink-2:#5b6a62; --line:#d9ded8; --card:#ffffff;
+    --spruce:#2f6b4f; --lake:#2c6f9b; --amber:#b8862b; --stone:#8a8f8c; --water:#dbe9f2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:15px;line-height:1.45}
+  header{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;padding:22px 24px 14px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em}
+  header .count{color:var(--ink-2)}
+  header .spacer{flex:1}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 13px;border-radius:6px}
+  button:hover{border-color:var(--ink-2)}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--lake);outline-offset:2px}
+  button.primary{background:var(--spruce);border-color:var(--spruce);color:#fff;font-weight:500}
+  button.quiet{border-color:transparent;color:var(--ink-2)}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 24px;border-bottom:1px solid var(--line)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;font-size:14px}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .chip .n{opacity:.6;margin-left:5px}
+  .toolbar label.tog{display:flex;align-items:center;gap:6px;color:var(--ink-2);font-size:14px}
+  .toolbar select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+  main{padding:20px 24px 60px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px}
+  .t{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;border-left:5px solid var(--st)}
+  .t:hover{border-color:var(--ink-2);border-left-color:var(--st)}
+  .t .ph{aspect-ratio:4/3;background:#e6eae4 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 75"><path d="M0 60 L20 35 L35 50 L55 20 L80 48 L100 40 L100 75 L0 75Z" fill="%23cfd6cf"/></svg>') center/cover no-repeat}
+  .t .ph{position:relative;overflow:hidden}
+  .t .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+  .lb{position:fixed;inset:0;background:rgba(15,20,18,.92);display:none;align-items:center;justify-content:center;z-index:2100;cursor:zoom-out}
+  .lb.open{display:flex}
+  .lb img{max-width:96vw;max-height:94vh;object-fit:contain;border-radius:4px}
+  .t .body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px}
+  .t .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .t h3{margin:0;font-size:16px;font-weight:600}
+  .t .lieu{color:var(--ink-2);font-size:14px}
+  .t .price{font-size:18px;font-weight:600;white-space:nowrap}
+  .t .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13.5px;color:var(--ink-2)}
+  .badge.lct{background:#e4efe8;color:var(--spruce)}
+  .badge{padding:2px 8px;border-radius:4px;background:var(--water);color:var(--lake);font-weight:500}
+  .status{font-size:13px;font-weight:500;color:var(--st)}
+  .t .note{font-size:13.5px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .t.rejet{opacity:.6}
+  .empty{text-align:center;color:var(--ink-2);padding:80px 20px;max-width:420px;margin:0 auto}
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(29,42,36,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto;z-index:2000}
+  .ov.open{display:flex}
+  .modal{background:var(--card);border-radius:10px;width:100%;max-width:760px;padding:22px 24px 20px}
+  .modal h2{margin:0 0 14px;font-size:19px;font-weight:600}
+  .f{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px}
+  .f .full{grid-column:1/-1}
+  .f label{display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--ink-2)}
+  .f input[type=text],.f input[type=number],.f input[type=url],.f select,.f textarea{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);width:100%}
+  .f textarea{min-height:80px;resize:vertical}
+  .f .row{display:flex;gap:8px;align-items:center}
+  .f .row input[type=number]{flex:1}
+  .f .row select{width:auto}
+  .checks{display:flex;gap:18px;align-items:center;padding-top:22px;flex-wrap:wrap}
+  .checks label{flex-direction:row;align-items:center;gap:7px;color:var(--ink);font-size:15px}
+  .photo-field{display:flex;gap:12px;align-items:center}
+  .photo-field .prev{width:160px;height:120px;border-radius:6px;background:#e6eae4;object-fit:cover;flex-shrink:0;cursor:zoom-in}
+  .photo-field .opts{display:flex;flex-direction:column;gap:6px;flex:1}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;align-items:center}
+  .actions .del{margin-right:auto;color:#a33;border-color:transparent}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:6px;font-size:14px;z-index:2200;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .views{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .views button{border:0;border-radius:0;padding:6px 12px}
+  .views button.on{background:var(--ink);color:#fff}
+  #map{height:calc(100vh - 150px);min-height:420px;border:1px solid var(--line);border-radius:8px;display:none}
+  .leaflet-popup-content{font-family:inherit;font-size:14px;margin:10px 12px}
+  .leaflet-popup-content b{font-size:15px}
+  .leaflet-popup-content button{margin-top:6px}
+  .pm{width:64px;text-align:center;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+  .pm .im{width:64px;height:48px;border-radius:6px;border:3px solid var(--c);background:#e6eae4 center/cover no-repeat;box-sizing:border-box}
+  .pm .pr{display:inline-block;margin-top:2px;background:#fff;border:1.5px solid var(--c);color:#1d2a24;font:600 11px/1.3 "IBM Plex Sans",system-ui,sans-serif;padding:1px 5px;border-radius:4px;white-space:nowrap}
+  .pm.rejet{opacity:.55}
+  #mapPhotos{display:none}
+  .t .lot{color:var(--ink-2);font-size:13px}
+  .t a.gps{color:var(--lake);font-size:13px;text-decoration:none}
+  /* vue lecture */
+  .ov-read .modal{max-width:820px}
+  .read-photo{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;cursor:zoom-in;display:block;background:#e6eae4}
+  .read-photo.no-photo{aspect-ratio:unset;height:140px;background:#e6eae4 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 75"><path d="M0 60 L20 35 L35 50 L55 20 L80 48 L100 40 L100 75 L0 75Z" fill="%23cfd6cf"/></svg>') center/cover no-repeat;cursor:default}
+  .read-layout{display:grid;grid-template-columns:280px 1fr;gap:18px}
+  .read-left{display:flex;flex-direction:column;gap:10px}
+  .read-right{display:flex;flex-direction:column;gap:12px}
+  .read-title{font-size:20px;font-weight:600;margin:0}
+  .read-sub{color:var(--ink-2);font-size:14px}
+  .read-price{font-size:22px;font-weight:600}
+  .read-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .read-label{font-size:12px;font-weight:500;color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em;margin-top:4px}
+  .read-val{font-size:14.5px}
+  .read-link{color:var(--lake);font-size:14px;word-break:break-all}
+  .read-link:hover{text-decoration:underline}
+  .read-section{border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+  .read-section p{margin:4px 0 0;font-size:14px;line-height:1.55;white-space:pre-wrap}
+  .read-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+  @media(max-width:620px){.read-layout{grid-template-columns:1fr}.read-photo{aspect-ratio:16/9}}
+  @media (max-width:560px){.f{grid-template-columns:1fr}.checks{padding-top:0}header,main,.toolbar{padding-left:14px;padding-right:14px}}
+</style>
+
+<header>
+  <h1>Terrains</h1>
+  <span class="count" id="count"></span>
+  <span class="spacer"></span>
+  <button class="quiet" id="btnImport">Importer</button>
+  <button class="quiet" id="btnExport">Exporter JSON</button>
+  <button class="primary" id="btnNew">Ajouter un terrain</button>
+</header>
+<div class="toolbar">
+  <div class="chips" id="chips"></div>
+  <label class="tog"><input type="checkbox" id="fBord"> Bord de l'eau seulement</label>
+  <label class="tog"><input type="checkbox" id="fAcces"> Accès à l'eau seulement</label>
+  <label class="tog"><input type="checkbox" id="fLct"> LCT confirmé seulement</label>
+  <div class="views"><button class="on" id="vList" type="button">Liste</button><button id="vMap" type="button">Carte</button></div>
+  <label class="tog" id="mapPhotos"><input type="checkbox" id="fPhotos" checked> Photos sur la carte</label>
+  <select id="sort">
+    <option value="date">Plus récents d'abord</option>
+    <option value="prixAsc">Prix croissant</option>
+    <option value="prixDesc">Prix décroissant</option>
+    <option value="superficie">Superficie décroissante</option>
+    <option value="statut">Par statut</option>
+  </select>
+</div>
+<main><div class="grid" id="grid"></div><div id="map"></div><div class="empty" id="empty" hidden>Aucun terrain pour l'instant. Ajoute le premier avec le bouton en haut à droite, ou importe un fichier JSON.</div></main>
+
+<div class="ov" id="ov">
+  <div class="modal" role="dialog" aria-modal="true" id="modal-inner">
+    <!-- formulaire généré dynamiquement -->
+  </div>
+</div>
+<div class="lb" id="lb"><img id="lbImg" alt=""></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept="application/json" hidden>
+
+<script>
+// Stockage : celui de Claude quand la page tourne dans l'artefact, sinon celui du navigateur (fichier ouvert en local).
+const store = (window.storage && typeof window.storage.set==="function") ? window.storage : {
+  async list(prefix){ return {keys:Object.keys(localStorage).filter(k=>k.startsWith(prefix))}; },
+  async get(k){ const v=localStorage.getItem(k); if(v==null) throw new Error("not found"); return {key:k,value:v}; },
+  async set(k,v){ localStorage.setItem(k,v); return {key:k,value:v}; },
+  async delete(k){ localStorage.removeItem(k); return {key:k,deleted:true}; }
+};
+const STATUTS = ["Très bon","Bon","Indécis","Rejeté"];
+const COLORS = {"Très bon":"var(--spruce)","Bon":"var(--lake)","Indécis":"var(--amber)","Rejeté":"var(--stone)"};
+const RANK = {"Très bon":0,"Bon":1,"Indécis":2,"Rejeté":3};
+let items = [], filter = "Tous", editing = null, photoData = "", ovMode = "read";
+const $ = id => document.getElementById(id);
+const fmt$ = n => n==null||n===""?"—":Number(n).toLocaleString("fr-CA",{style:"currency",currency:"CAD",maximumFractionDigits:0});
+const fmtSup = t => t.superficie?`${Number(t.superficie).toLocaleString("fr-CA")} ${t.unite||""}`:"";
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
+
+async function load(){
+  try{
+    const r = await store.list("terrain:", false);
+    const keys = (r&&r.keys)||[];
+    for(const k of keys){
+      try{const g=await store.get(k,false); if(g&&g.value){items.push(JSON.parse(g.value));render();}}catch(e){console.error(k,e);}
+    }
+  }catch(e){console.error("list",e);}
+  render();
+}
+async function save(t){
+  try{
+    const r = await store.set("terrain:"+t.id, JSON.stringify(t), false);
+    if(!r) throw new Error("set failed");
+    return true;
+  }catch(e){console.error(e);toast(e&&e.name==="QuotaExceededError"?"Stockage plein — exporte en JSON et retire des photos":"Échec de la sauvegarde");return false;}
+}
+async function remove(id){
+  try{await store.delete("terrain:"+id,false);}catch(e){console.error(e);}
+}
+
+function render(){
+  // chips
+  const counts={Tous:items.length};STATUTS.forEach(s=>counts[s]=items.filter(t=>t.statut===s).length);
+  $("chips").innerHTML=["Tous",...STATUTS].map(s=>`<button class="chip ${filter===s?"on":""}" data-s="${s}">${s}<span class="n">${counts[s]}</span></button>`).join("");
+  $("chips").querySelectorAll(".chip").forEach(b=>b.onclick=()=>{filter=b.dataset.s;render();});
+  const list=currentList();
+  $("count").textContent=`${list.length} sur ${items.length}`;
+  if(view==="map") renderMap();
+  $("empty").hidden=items.length>0;
+  $("grid").innerHTML=list.map(t=>`
+    <article class="t ${t.statut==="Rejeté"?"rejet":""}" style="--st:${COLORS[t.statut]}" data-id="${t.id}">
+      <div class="ph">${t.photo?`<img src="${t.photo}" alt="" onclick="event.stopPropagation();showPhoto('${t.id}')">`:""}</div>
+      <div class="body">
+        <div class="top"><h3>${esc(t.titre)||"Sans nom"}</h3><span class="price">${fmt$(t.prix)}</span></div>
+        <div class="lieu">${esc(t.lieu)||""}${t.lot?` <span class="lot">· lot ${esc(t.lot)}</span>`:""}</div>
+        <div class="meta">
+          <span class="status">${t.statut}</span>
+          ${fmtSup(t)?`<span>${fmtSup(t)}</span>`:""}
+          ${t.bordEau?`<span class="badge">Bord de l'eau</span>`:""}
+          ${t.accesEau&&!t.bordEau?`<span class="badge">Accès à l'eau</span>`:""}
+          ${t.lct?`<span class="badge lct">LCT confirmé</span>`:""}
+        </div>
+        ${t.notes?`<div class="note">${esc(t.notes)}</div>`:""}
+        ${hasGps(t)?`<a class="gps" href="https://www.google.com/maps?q=${t.lat},${t.lng}" target="_blank" onclick="event.stopPropagation()">Voir sur Google Maps</a>`:""}
+      </div>
+    </article>`).join("");
+  $("grid").querySelectorAll(".t").forEach(el=>el.onclick=()=>openView(items.find(t=>t.id===el.dataset.id)));
+}
+function hasGps(t){return t&&typeof t.lat==="number"&&typeof t.lng==="number"&&!isNaN(t.lat)&&!isNaN(t.lng);}
+function parseGps(v){
+  const m=(v||"").trim().match(/^(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)$/);
+  if(!m) return {lat:null,lng:null};
+  return {lat:parseFloat(m[1].replace(",",".")),lng:parseFloat(m[2].replace(",","."))};
+}
+let view="list", map=null, layer=null;
+const HEX={"Très bon":"#2f6b4f","Bon":"#2c6f9b","Indécis":"#b8862b","Rejeté":"#8a8f8c"};
+function setView(v){
+  view=v; $("vList").classList.toggle("on",v==="list"); $("vMap").classList.toggle("on",v==="map");
+  $("grid").style.display=v==="list"?"":"none"; $("map").style.display=v==="map"?"block":"none";
+  $("mapPhotos").style.display=v==="map"?"flex":"none";
+  if(v==="map") renderMap();
+}
+function renderMap(){
+  if(typeof L==="undefined"){$("map").innerHTML='<p style="padding:20px;color:var(--ink-2)">La carte ne peut pas se charger (pas d\'accès à internet ou bibliothèque bloquée).</p>';return;}
+  if(!map){
+    map=L.map("map").setView([46.15,-73.65],9);
+    const plan=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri, HERE, Garmin, OpenStreetMap contributors"});
+    const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri, Maxar, Earthstar Geographics"});
+    const rues=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri, HERE, Garmin, OpenStreetMap contributors"});
+    rues.addTo(map);
+    L.control.layers({"Rues":rues,"Topo":plan,"Satellite":sat},null,{collapsed:false}).addTo(map);
+    layer=L.layerGroup().addTo(map);
+  }
+  layer.clearLayers();
+  const pts=currentList().filter(hasGps);
+  pts.forEach(t=>{
+    let m;
+    if($("fPhotos").checked){
+      const short=t.prix!=null?(t.prix>=1000?Math.round(t.prix/1000)+" k$":t.prix+" $"):"—";
+      const icon=L.divIcon({className:"",iconSize:[64,68],iconAnchor:[32,68],popupAnchor:[0,-64],
+        html:`<div class="pm ${t.statut==="Rejeté"?"rejet":""}" style="--c:${HEX[t.statut]}"><div class="im" style="${t.photo?`background-image:url('${t.photo}')`:""}"></div><span class="pr">${short}</span></div>`});
+      m=L.marker([t.lat,t.lng],{icon}).addTo(layer);
+    } else {
+      m=L.circleMarker([t.lat,t.lng],{radius:9,color:"#fff",weight:2,fillColor:HEX[t.statut],fillOpacity:.95}).addTo(layer);
+    }
+    m.bindPopup(`<b>${esc(t.titre)||"Sans nom"}</b><br>${esc(t.lieu)||""}${t.lot?` · lot ${esc(t.lot)}`:""}<br>${fmt$(t.prix)}${fmtSup(t)?` · ${fmtSup(t)}`:""}<br><span style="color:${HEX[t.statut]}">${t.statut}</span>${t.bordEau?" · Bord de l'eau":t.accesEau?" · Accès à l'eau":""}${t.lct?" · LCT confirmé":""}<br><button onclick="openView(items.find(x=>x.id==='${t.id}'))">Ouvrir la fiche</button>`);
+  });
+  setTimeout(()=>{map.invalidateSize(); if(pts.length) map.fitBounds(pts.map(t=>[t.lat,t.lng]),{padding:[40,40],maxZoom:14});},50);
+}
+function showPhoto(id){const t=items.find(x=>x.id===id);if(!t||!t.photo)return;$("lbImg").src=t.photo;$("lb").classList.add("open");}
+$("lb").onclick=()=>$("lb").classList.remove("open");
+
+function openEditId(id){openView(items.find(t=>t.id===id));}
+$("vList").onclick=()=>setView("list"); $("vMap").onclick=()=>setView("map");
+function currentList(){
+  let list=items.filter(t=>filter==="Tous"||t.statut===filter);
+  if($("fBord").checked) list=list.filter(t=>t.bordEau);
+  if($("fAcces").checked) list=list.filter(t=>t.accesEau);
+  if($("fLct").checked) list=list.filter(t=>t.lct);
+  const s=$("sort").value;
+  list.sort((a,b)=>{
+    if(s==="prixAsc") return (a.prix||Infinity)-(b.prix||Infinity);
+    if(s==="prixDesc") return (b.prix||0)-(a.prix||0);
+    if(s==="superficie") return (b.superficie||0)-(a.superficie||0);
+    if(s==="statut") return RANK[a.statut]-RANK[b.statut]||b.date-a.date;
+    return b.date-a.date;
+  });
+  return list;
+}
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function editFormHTML(){
+  return `<h2 id="mTitle">Terrain</h2>
+  <div class="f">
+    <label class="full">Nom du terrain<input type="text" id="iTitre" placeholder="ex. Lot 12, chemin du Lac Vert"></label>
+    <label>Municipalité / secteur<input type="text" id="iLieu" placeholder="Sainte-Béatrix"></label>
+    <label>Numéro de lot<input type="text" id="iLot" placeholder="ex. 5 123 456"></label>
+    <label class="full">Point GPS (latitude, longitude — colle depuis Google Maps)<input type="text" id="iGps" placeholder="46.1234, -73.5678"></label>
+    <label class="full" id="iGpsLinkWrap" style="display:none">Lien Google Maps (généré)
+      <a id="iGpsLink" href="#" target="_blank" class="read-link" style="margin-top:3px;font-size:13px"></a>
+    </label>
+    <label>Prix demandé ($)<input type="number" id="iPrix" min="0" step="500"></label>
+    <label>Superficie<span class="row"><input type="number" id="iSup" min="0" step="0.01">
+      <select id="iUnit"><option>pi²</option><option>m²</option><option>acres</option><option>ha</option></select></span></label>
+    <div class="checks">
+      <label><input type="checkbox" id="iBord"> Bord de l'eau</label>
+      <label><input type="checkbox" id="iAcces"> Accès à l'eau</label>
+      <label><input type="checkbox" id="iLct"> LCT confirmé</label>
+    </div>
+    <label>Statut<select id="iStatut"><option>Indécis</option><option>Très bon</option><option>Bon</option><option>Rejeté</option></select></label>
+    <label class="full">Lien de l'annonce (Marketplace, Centris, DuProprio…)<input type="url" id="iUrl" placeholder="https://"></label>
+    <div class="full photo-field">
+      <img class="prev" id="iPrev" alt="" style="visibility:hidden">
+      <div class="opts">
+        <input type="file" id="iFile" accept="image/*">
+        <input type="url" id="iPhotoUrl" placeholder="…ou coller l'URL d'une image">
+        <button class="quiet" id="btnClearPhoto" type="button" style="align-self:flex-start">Retirer la photo</button>
+      </div>
+    </div>
+    <label class="full">Notes personnelles<textarea id="iNotes" placeholder="Ce que j'en pense, à vérifier, points forts/faibles…"></textarea></label>
+    <label class="full">Description de l'annonce (copier-coller)<textarea id="iDesc" style="min-height:120px"></textarea></label>
+  </div>
+  <div class="actions">
+    <button class="del" id="btnDel" type="button">Supprimer</button>
+    <button id="btnCancel" type="button">Annuler</button>
+    <button class="primary" id="btnSave" type="button">Enregistrer</button>
+  </div>`;
+}
+function updateGpsLink(){
+  const g=parseGps($("iGps").value);
+  const wrap=$("iGpsLinkWrap"), link=$("iGpsLink");
+  if(g.lat&&g.lng){
+    wrap.style.display=""; link.href=`https://www.google.com/maps?q=${g.lat},${g.lng}`;
+    link.textContent=`${g.lat}, ${g.lng} — ouvrir dans Google Maps`;
+  } else { wrap.style.display="none"; }
+}
+function bindEditEvents(){
+  $("iFile").onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const img=new Image(); const rd=new FileReader();
+    rd.onload=()=>{img.src=rd.result;};
+    img.onload=()=>{
+      const max=900, r=Math.min(1,max/Math.max(img.width,img.height));
+      const c=document.createElement("canvas"); c.width=img.width*r; c.height=img.height*r;
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      setPhoto(c.toDataURL("image/jpeg",.7));
+    };
+    rd.readAsDataURL(f);
+  };
+  
+  
+  
+  $("iPhotoUrl").onchange=e=>{if(e.target.value) setPhoto(e.target.value.trim());};
+  $("btnClearPhoto").onclick=()=>setPhoto("");
+  $("btnCancel").onclick=close;
+  $("iGps").addEventListener("input",updateGpsLink);
+  $("btnDel").onclick=async()=>{
+    if(!editing||!confirm("Supprimer ce terrain ?")) return;
+    await remove(editing.id); items=items.filter(x=>x.id!==editing.id); close(); render(); toast("Supprimé");
+  };
+  $("btnSave").onclick=async()=>{
+    const t={
+      id:editing?.id||Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      date:editing?.date||Date.now(),
+      titre:$("iTitre").value.trim(), lieu:$("iLieu").value.trim(), lot:$("iLot").value.trim(),
+      ...parseGps($("iGps").value),
+      prix:$("iPrix").value===""?null:Number($("iPrix").value),
+      superficie:$("iSup").value===""?null:Number($("iSup").value), unite:$("iUnit").value,
+      bordEau:$("iBord").checked, accesEau:$("iAcces").checked||$("iBord").checked, lct:$("iLct").checked,
+      statut:$("iStatut").value, url:$("iUrl").value.trim(),
+      photo:photoData, notes:$("iNotes").value.trim(), description:$("iDesc").value.trim()
+    };
+    $("btnSave").disabled=true;
+    if(await save(t)){
+      const i=items.findIndex(x=>x.id===t.id); i>=0?items[i]=t:items.push(t);
+      close(); render(); toast("Enregistré");
+    }
+    $("btnSave").disabled=false;
+  };
+  
+}
+function openView(t){
+  if(!t) return;
+  ovMode="read";
+  $("ov").classList.remove("ov-read");
+  void $("ov").offsetWidth;
+  $("ov").classList.add("ov-read");
+  const gpsLink=hasGps(t)?`https://www.google.com/maps?q=${t.lat},${t.lng}`:"";
+  $("modal-inner").innerHTML=`
+    <h2 class="read-title" style="margin-bottom:14px">${esc(t.titre)||"Sans nom"}</h2>
+    <div class="read-layout">
+      <div class="read-left">
+        ${t.photo?`<img class="read-photo" src="${t.photo}" alt="" onclick="$('lbImg').src='${t.photo}';$('lb').classList.add('open')">`
+                 :`<div class="read-photo no-photo"></div>`}
+        <div class="read-price">${fmt$(t.prix)}</div>
+        <div class="read-row">
+          <span class="status" style="color:${COLORS[t.statut]};font-weight:600">${t.statut}</span>
+          ${t.bordEau?`<span class="badge">Bord de l'eau</span>`:""}
+          ${t.accesEau&&!t.bordEau?`<span class="badge">Accès à l'eau</span>`:""}
+          ${t.lct?`<span class="badge lct">LCT confirmé</span>`:""}
+        </div>
+      </div>
+      <div class="read-right">
+        <div>
+          ${t.lieu?`<div class="read-sub">${esc(t.lieu)}</div>`:""}
+          ${t.lot?`<div class="read-sub">Lot ${esc(t.lot)}</div>`:""}
+          ${fmtSup(t)?`<div class="read-sub">${fmtSup(t)}</div>`:""}
+        </div>
+        ${t.url?`<div><div class="read-label">Annonce</div><a class="read-link" href="${t.url}" target="_blank">${esc(t.url.replace(/^https?:\/\//,""))}</a></div>`:""}
+        ${gpsLink?`<div><div class="read-label">GPS</div><a class="read-link" href="${gpsLink}" target="_blank">${t.lat}, ${t.lng}</a></div>`:""}
+        ${t.notes?`<div class="read-section"><div class="read-label">Notes personnelles</div><p>${esc(t.notes)}</p></div>`:""}
+        ${t.description?`<div class="read-section"><div class="read-label">Description de l'annonce</div><p>${esc(t.description)}</p></div>`:""}
+      </div>
+    </div>
+    <div class="read-actions">
+      <button type="button" onclick="close()">Fermer</button>
+      <button class="primary" type="button" onclick="openEdit(items.find(x=>x.id==='${t.id}'))">✏️ Modifier</button>
+    </div>`;
+  $("ov").classList.add("open");
+}
+function openEdit(t){
+  ovMode="edit";
+  $("ov").classList.remove("ov-read");
+  editing=t||null;
+  $("modal-inner").innerHTML=editFormHTML();
+  bindEditEvents();
+  $("mTitle").textContent=t?"Modifier le terrain":"Nouveau terrain";
+  $("btnDel").style.display=t?"":"none";
+  $("iTitre").value=t?.titre||""; $("iLieu").value=t?.lieu||""; $("iLot").value=t?.lot||"";
+  $("iGps").value=hasGps(t)?`${t.lat}, ${t.lng}`:""; updateGpsLink();
+  $("iPrix").value=t?.prix??"";
+  $("iSup").value=t?.superficie??""; $("iUnit").value=t?.unite||"pi²";
+  $("iBord").checked=!!t?.bordEau; $("iAcces").checked=!!t?.accesEau; $("iLct").checked=!!t?.lct;
+  $("iStatut").value=t?.statut||"Indécis"; $("iUrl").value=t?.url||"";
+  $("iNotes").value=t?.notes||""; $("iDesc").value=t?.description||"";
+  $("iFile").value=""; $("iPhotoUrl").value=""; setPhoto(t?.photo||"");
+  $("ov").classList.add("open"); $("iTitre").focus();
+}
+function setPhoto(d){photoData=d;$("iPrev").src=d||"";$("iPrev").style.visibility=d?"visible":"hidden";}
+function close(){$("ov").classList.remove("open");}
+
+
+
+
+$("btnNew").onclick=()=>{ovMode="edit";$("ov").classList.remove("ov-read");$("modal-inner").innerHTML=editFormHTML();bindEditEvents();$("mTitle").textContent="Nouveau terrain";$("btnDel").style.display="none";setPhoto("");$("ov").classList.add("open");$("iTitre").focus();};
+
+
+$("ov").onclick=e=>{if(e.target===$("ov")) close();};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){close();$("lb").classList.remove("open");}});
+
+
+["fBord","fAcces","fLct","sort","fPhotos"].forEach(id=>$(id).onchange=render);
+
+$("btnExport").onclick=()=>{
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:"application/json"}));
+  a.download=`terrains-${new Date().toISOString().slice(0,10)}.json`; a.click();
+};
+$("btnImport").onclick=()=>$("importFile").click();
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const arr=JSON.parse(await f.text()); let n=0;
+    for(const t of arr){ if(!t.id) continue; if(await save(t)){const i=items.findIndex(x=>x.id===t.id); i>=0?items[i]=t:items.push(t); n++;} }
+    render(); toast(`${n} terrain(s) importé(s)`);
+  }catch(err){toast("Fichier JSON invalide");}
+  e.target.value="";
+};
+
+load();
+</script>
