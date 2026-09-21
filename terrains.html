@@ -110,6 +110,7 @@
   <span class="spacer"></span>
   <button class="quiet" id="btnImport">Importer</button>
   <button class="quiet" id="btnExport">Exporter JSON</button>
+  <button class="quiet" id="btnGithub">⬆ GitHub</button>
   <button class="primary" id="btnNew">Ajouter un terrain</button>
 </header>
 <div class="toolbar">
@@ -160,9 +161,19 @@ async function load(){
     const r = await store.list("terrain:", false);
     const keys = (r&&r.keys)||[];
     for(const k of keys){
-      try{const g=await store.get(k,false); if(g&&g.value){items.push(JSON.parse(g.value));render();}}catch(e){console.error(k,e);}
+      try{const g=await store.get(k,false); if(g&&g.value){items.push(JSON.parse(g.value));}}catch(e){console.error(k,e);}
     }
   }catch(e){console.error("list",e);}
+  // Si aucune donnée locale, essaie de charger data.json (GitHub Pages)
+  if(items.length===0){
+    try{
+      const resp=await fetch("data.json");
+      if(resp.ok){
+        const arr=await resp.json();
+        items=arr.filter(function(t){return t&&t.id;});
+      }
+    }catch(e){/* pas de data.json, c'est normal en local */}
+  }
   render();
 }
 async function save(t){
@@ -433,6 +444,15 @@ $("btnExport").onclick=()=>{
   const a=document.createElement("a");
   a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:"application/json"}));
   a.download=`terrains-${new Date().toISOString().slice(0,10)}.json`; a.click();
+};
+$("btnGithub").onclick=()=>{
+  // Export data.json — to be committed alongside terrains.html in the GitHub repo
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:"application/json"}));
+  a.download="data.json"; a.click();
+  setTimeout(function(){
+    alert("Fichier data.json telecharge !\n\n1. Copie-le dans ton dossier GitHub local (remplace l'ancien s'il existe)\n2. Dans GitHub Desktop : Summary -> Commit -> Push origin\n3. Attends 30 sec -> ton cell est a jour");
+  },400);
 };
 $("btnImport").onclick=()=>$("importFile").click();
 $("importFile").onchange=async e=>{
