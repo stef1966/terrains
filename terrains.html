@@ -157,22 +157,29 @@ const fmtSup = t => t.superficie?`${Number(t.superficie).toLocaleString("fr-CA")
 function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
 
 async function load(){
+  const seen=new Set();
   try{
-    const r = await store.list("terrain:", false);
-    const keys = (r&&r.keys)||[];
+    const r=await store.list("terrain:",false);
+    const keys=(r&&r.keys)||[];
     for(const k of keys){
-      try{const g=await store.get(k,false); if(g&&g.value){items.push(JSON.parse(g.value));}}catch(e){console.error(k,e);}
+      try{
+        const g=await store.get(k,false);
+        if(g&&g.value){
+          const t=JSON.parse(g.value);
+          if(t&&t.id&&!seen.has(t.id)){seen.add(t.id);items.push(t);}
+        }
+      }catch(e){console.error(k,e);}
     }
   }catch(e){console.error("list",e);}
-  // Si aucune donnée locale, essaie de charger data.json (GitHub Pages)
+  // Si aucune donnée locale, tente data.json (GitHub Pages uniquement)
   if(items.length===0){
     try{
-      const resp=await fetch("data.json");
+      const resp=await fetch("data.json",{cache:"no-store"});
       if(resp.ok){
         const arr=await resp.json();
         items=arr.filter(function(t){return t&&t.id;});
       }
-    }catch(e){/* pas de data.json, c'est normal en local */}
+    }catch(e){/* normal en local, pas de data.json */}
   }
   render();
 }
@@ -341,11 +348,11 @@ function bindEditEvents(){
   
   $("iPhotoUrl").onchange=e=>{if(e.target.value) setPhoto(e.target.value.trim());};
   $("btnClearPhoto").onclick=()=>setPhoto("");
-  $("btnCancel").onclick=close;
+  $("btnCancel").onclick=closeModal;
   $("iGps").addEventListener("input",updateGpsLink);
   $("btnDel").onclick=async()=>{
     if(!editing||!confirm("Supprimer ce terrain ?")) return;
-    await remove(editing.id); items=items.filter(x=>x.id!==editing.id); close(); render(); toast("Supprimé");
+    await remove(editing.id); items=items.filter(x=>x.id!==editing.id); closeModal(); render(); toast("Supprimé");
   };
   $("btnSave").onclick=async()=>{
     const t={
@@ -362,7 +369,7 @@ function bindEditEvents(){
     $("btnSave").disabled=true;
     if(await save(t)){
       const i=items.findIndex(x=>x.id===t.id); i>=0?items[i]=t:items.push(t);
-      close(); render(); toast("Enregistré");
+      closeModal(); render(); toast("Enregistré");
     }
     $("btnSave").disabled=false;
   };
@@ -402,7 +409,7 @@ function openView(t){
       </div>
     </div>
     <div class="read-actions">
-      <button type="button" onclick="close()">Fermer</button>
+      <button type="button" onclick="closeModal()">Fermer</button>
       <button class="primary" type="button" onclick="openEdit(items.find(x=>x.id==='${t.id}'))">✏️ Modifier</button>
     </div>`;
   $("ov").classList.add("open");
@@ -426,7 +433,8 @@ function openEdit(t){
   $("ov").classList.add("open"); $("iTitre").focus();
 }
 function setPhoto(d){photoData=d;$("iPrev").src=d||"";$("iPrev").style.visibility=d?"visible":"hidden";}
-function close(){$("ov").classList.remove("open");}
+function closeModal(){$("ov").classList.remove("open");}
+function close(){closeModal();}
 
 
 
