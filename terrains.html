@@ -158,6 +158,17 @@ function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");set
 
 async function load(){
   const seen=new Set();
+  // 1. Charge data.json en premier (source de vérité sur GitHub Pages)
+  try{
+    const resp=await fetch("data.json",{cache:"no-store"});
+    if(resp.ok){
+      const arr=await resp.json();
+      for(const t of arr){
+        if(t&&t.id&&!seen.has(t.id)){seen.add(t.id);items.push(t);}
+      }
+    }
+  }catch(e){/* pas de data.json, normal en local */}
+  // 2. Ajoute ce qui est dans localStorage mais pas dans data.json
   try{
     const r=await store.list("terrain:",false);
     const keys=(r&&r.keys)||[];
@@ -171,16 +182,6 @@ async function load(){
       }catch(e){console.error(k,e);}
     }
   }catch(e){console.error("list",e);}
-  // Si aucune donnée locale, tente data.json (GitHub Pages uniquement)
-  if(items.length===0){
-    try{
-      const resp=await fetch("data.json",{cache:"no-store"});
-      if(resp.ok){
-        const arr=await resp.json();
-        items=arr.filter(function(t){return t&&t.id;});
-      }
-    }catch(e){/* normal en local, pas de data.json */}
-  }
   render();
 }
 async function save(t){
