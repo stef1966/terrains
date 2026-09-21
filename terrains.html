@@ -183,6 +183,19 @@ async function load(){
     }
   }catch(e){console.error("list",e);}
   render();
+  // Mode lecture seule sur GitHub Pages
+  const readOnly=window.location.hostname.includes("github.io");
+  if(readOnly){
+    ["btnImport","btnExport","btnGithub","btnNew"].forEach(function(id){
+      var b=$(id); if(b) b.style.display="none";
+    });
+    var badge=document.createElement("span");
+    badge.textContent="👁 Lecture seule";
+    badge.style.cssText="font-size:13px;color:var(--ink-2);align-self:center";
+    document.querySelector("header .spacer").insertAdjacentElement("afterend",badge);
+  }
+  // Cache le bouton Modifier dans openView si lecture seule
+  window._readOnly=readOnly;
 }
 async function save(t){
   try{
@@ -411,7 +424,7 @@ function openView(t){
     </div>
     <div class="read-actions">
       <button type="button" onclick="closeModal()">Fermer</button>
-      <button class="primary" type="button" onclick="openEdit(items.find(x=>x.id==='${t.id}'))">✏️ Modifier</button>
+      ${window._readOnly?"":"<button class=\"primary\" type=\"button\" onclick=\"openEdit(items.find(x=>x.id==='"+t.id+"'))\">✏️ Modifier</button>"}
     </div>`;
   $("ov").classList.add("open");
 }
